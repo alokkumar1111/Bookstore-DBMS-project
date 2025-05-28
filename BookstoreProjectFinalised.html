@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bookstore Management System</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #eef2f3;
+    }
+    .container {
+      position: relative;
+      max-width: 900px;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 10px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    }
+    h2 { text-align: center; color: #333; margin: 0 0 20px; }
+    .tab-buttons { display: flex; justify-content: center; margin-bottom: 20px; }
+    .tab-buttons button { margin: 0 10px; padding: 10px 20px; border: none; cursor: pointer; border-radius: 5px; background: #4CAF50; color: white; }
+    .hidden { display: none; }
+    form { display: flex; flex-direction: column; gap: 10px; }
+    input[type="text"], input[type="password"], input[type="email"], select { padding: 6px 10px; height: 34px; font-size: 14px; border: 1px solid #ccc; border-radius: 5px; }
+    button { background: #4CAF50; color: white; border: none; padding: 8px 16px; font-size: 14px; border-radius: 5px; cursor: pointer; }
+    .logout { position: absolute; top: 30px; right: 30px; background: #f44336; }
+    .profile-icon, .cart-icon { float: left; width: 40px; height: 40px; border-radius: 50%; background: #4CAF50; color: white; font-size: 20px; line-height: 40px; text-align: center; cursor: pointer; margin-right: 10px; }
+    .cart-icon { background: #2196F3; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+    th { background-color: #4CAF50; color: white; }
+    .status { padding: 5px 10px; border-radius: 3px; color: white; font-size: 0.8em; }
+    .status-pending { background: #FFC107; }
+    .status-processing { background: #2196F3; }
+    .status-completed { background: #4CAF50; }
+    .status-cancelled { background: #f44336; }
+    .header-container { position: relative; }
+    .phone-input-container { display: flex; }
+    .country-code { 
+      width: 80px; 
+      padding: 6px 10px;
+      height: 34px;
+      font-size: 14px;
+      border: 1px solid #ccc;
+      border-radius: 5px 0 0 5px;
+      background: #f5f5f5;
+    }
+    .phone-number {
+      flex: 1;
+      border-radius: 0 5px 5px 0;
+    }
+    .error-message {
+      color: #f44336;
+      font-size: 0.8em;
+      margin-top: -5px;
+    }
+    .quantity-input {
+      width: 60px;
+      text-align: center;
+    }
+    .add-to-cart-container {
+      display: flex;
+      gap: 5px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Auth -->
+  <div class="container" id="authContainer">
+    <h2>Bookstore Login/Register</h2>
+    <div class="tab-buttons">
+      <button onclick="toggleAuth('login')">Login</button>
+      <button onclick="toggleAuth('register')">Register</button>
+    </div>
+    <div id="loginForm">
+      <form onsubmit="login(event)">
+        <input type="text" id="loginUsername" placeholder="Username" required />
+        <input type="password" id="loginPassword" placeholder="Password" required />
+        <div class="phone-input-container">
+          <select id="loginCountryCode" class="country-code">
+            <option value="+1">+1 (US)</option>
+            <option value="+44">+44 (UK)</option>
+            <option value="+91">+91 (IN)</option>
+            <option value="+61">+61 (AU)</option>
+          </select>
+          <input type="text" id="loginPhone" class="phone-number" placeholder="Phone Number" required 
+                 pattern="[0-9]{10}" title="Please enter a 10-digit phone number" />
+        </div>
+        <div id="loginPhoneError" class="error-message hidden">Phone number must be 10 digits</div>
+        <button type="submit">Login</button>
+      </form>
+    </div>
+    <div id="registerForm" class="hidden">
+      <form onsubmit="register(event)">
+        <input type="text" id="registerUsername" placeholder="Username" required />
+        <input type="password" id="registerPassword" placeholder="Password" required />
+        <input type="email" id="registerEmail" placeholder="Email" required />
+        <div class="phone-input-container">
+          <select id="registerCountryCode" class="country-code">
+            <option value="+1">+1 (US)</option>
+            <option value="+44">+44 (UK)</option>
+            <option value="+91">+91 (IN)</option>
+            <option value="+61">+61 (AU)</option>
+          </select>
+          <input type="text" id="registerPhone" class="phone-number" placeholder="Phone Number" required 
+                 pattern="[0-9]{10}" title="Please enter a 10-digit phone number" />
+        </div>
+        <div id="registerPhoneError" class="error-message hidden">Phone number must be 10 digits</div>
+        <button type="submit">Register</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Home -->
+  <div class="container hidden" id="homePage">
+    <div class="header-container">
+      <h2>
+        <div class="profile-icon" onclick="showProfilePage()">P</div>
+        <div class="cart-icon" onclick="showCartPage()">C</div>
+        Welcome to the Bookstore
+      </h2>
+      <button class="logout" onclick="logout()">Logout</button>
+    </div>
+    <!-- Filters -->
+    <label>Filter by Author:</label>
+    <input type="text" id="filterAuthor" oninput="displayBooks()" />
+    <label>Genre:</label>
+    <select id="filterGenre" onchange="displayBooks()">
+      <option value="">All</option>
+      <option value="horror">Horror</option>
+      <option value="comedy">Comedy</option>
+      <option value="drama">Drama</option>
+      <option value="thriller">Thriller</option>
+      <option value="action">Action</option>
+      <option value="love stories">Love Stories</option>
+      <option value="fantasy">Fantasy</option>
+    </select>
+    <!-- Books -->
+    <table>
+      <thead>
+        <tr><th>Title</th><th>Author</th><th>Genre</th><th>Price</th><th>Stock</th><th>Action</th></tr>
+      </thead>
+      <tbody id="booksTable"></tbody>
+    </table>
+    <!-- Orders -->
+    <h3>Order History</h3>
+    <table>
+      <thead><tr><th>ID</th><th>Book</th><th>Qty</th><th>Total</th><th>Date</th><th>Status</th></tr></thead>
+      <tbody id="ordersTable"></tbody>
+    </table>
+  </div>
+
+  <!-- Profile -->
+  <div class="container hidden" id="profilePage">
+    <h2>Your Profile <button onclick="backToHome()">Back</button></h2>
+    <form onsubmit="updateProfile(event)">
+      <input type="text" id="profileUsername" disabled />
+      <input type="email" id="profileEmail" required />
+      <div class="phone-input-container">
+        <select id="profileCountryCode" class="country-code">
+          <option value="+1">+1 (US)</option>
+          <option value="+44">+44 (UK)</option>
+          <option value="+91">+91 (IN)</option>
+          <option value="+61">+61 (AU)</option>
+        </select>
+        <input type="text" id="profilePhone" class="phone-number" required 
+               pattern="[0-9]{10}" title="Please enter a 10-digit phone number" />
+      </div>
+      <div id="profilePhoneError" class="error-message hidden">Phone number must be 10 digits</div>
+      <input type="text" id="profileAddress" placeholder="Home Address" />
+      <button type="submit">Update Profile</button>
+    </form>
+  </div>
+
+  <!-- Cart -->
+  <div class="container hidden" id="cartPage">
+    <h2>Your Cart <button onclick="backToHome()">Back</button></h2>
+    <table>
+      <thead><tr><th>Book</th><th>Qty</th><th>Price</th><th>Remove</th></tr></thead>
+      <tbody id="cartTable"></tbody>
+    </table>
+    <div id="cartTotal" style="text-align: right; margin: 10px 0; font-weight: bold;"></div>
+    <button onclick="checkout()">Checkout</button>
+  </div>
+
+  <script>
+    function initializeData() {
+      if (!localStorage.getItem('users')) localStorage.setItem('users', JSON.stringify([]));
+      if (!localStorage.getItem('books')) {
+        const books = [
+          {id:'1',title:'Dracula',author:'Bram Stoker',genre:'horror',price:10,stock:5},
+          {id:'2',title:'Harry Potter',author:'J.K. Rowling',genre:'fantasy',price:15,stock:10},
+          {id:'3',title:'The Notebook',author:'Nicholas Sparks',genre:'love stories',price:12,stock:7},
+          {id:'4',title:'The Shining',author:'Stephen King',genre:'thriller',price:18,stock:3},
+          {id:'5',title:'Dumb and Dumber',author:'Peter Farrelly',genre:'comedy',price:8,stock:4},
+          {id:'6',title:'Inferno',author:'Dan Brown',genre:'thriller',price:14,stock:6},
+          {id:'7',title:'It',author:'Stephen King',genre:'horror',price:17,stock:5},
+          {id:'8',title:'The Alchemist',author:'Paulo Coelho',genre:'drama',price:11,stock:9},
+          {id:'9',title:'Percy Jackson',author:'Rick Riordan',genre:'fantasy',price:13,stock:10},
+          {id:'10',title:'Pride and Prejudice',author:'Jane Austen',genre:'drama',price:9,stock:4},
+          {id:'11',title:'The Hobbit',author:'J.R.R. Tolkien',genre:'fantasy',price:14,stock:8},
+          {id:'12',title:'Sapiens',author:'Yuval Noah Harari',genre:'drama',price:18,stock:6},
+          {id:'13',title:'1984',author:'George Orwell',genre:'drama',price:12,stock:7},
+          {id:'14',title:'The Great Gatsby',author:'F. Scott Fitzgerald',genre:'drama',price:10,stock:5},
+          {id:'15',title:'To Kill a Mockingbird',author:'Harper Lee',genre:'drama',price:11,stock:6}
+        ];
+        localStorage.setItem('books',JSON.stringify(books));
+      }
+      if (!localStorage.getItem('orders')) localStorage.setItem('orders',JSON.stringify([]));
+      if (!sessionStorage.getItem('cart')) sessionStorage.setItem('cart',JSON.stringify([]));
+    }
+
+    function toggleAuth(type) {
+      document.getElementById('loginForm').classList.toggle('hidden', type!=='login');
+      document.getElementById('registerForm').classList.toggle('hidden', type!=='register');
+    }
+
+    function validatePhoneNumber(phone) {
+      return /^\d{10}$/.test(phone);
+    }
+
+    function showPhoneError(fieldId) {
+      const errorElement = document.getElementById(`${fieldId}Error`);
+      errorElement.classList.remove('hidden');
+      return false;
+    }
+
+    function hidePhoneError(fieldId) {
+      const errorElement = document.getElementById(`${fieldId}Error`);
+      errorElement.classList.add('hidden');
+      return true;
+    }
+
+    function register(e) {
+      e.preventDefault();
+      const u = document.getElementById('registerUsername').value,
+            p = document.getElementById('registerPassword').value,
+            eMail = document.getElementById('registerEmail').value,
+            countryCode = document.getElementById('registerCountryCode').value,
+            ph = document.getElementById('registerPhone').value;
+      
+      if (!validatePhoneNumber(ph)) {
+        return showPhoneError('registerPhone');
+      }
+      hidePhoneError('registerPhone');
+      
+      let users = JSON.parse(localStorage.getItem('users'));
+      if (users.find(u2 => u2.username === u)) return alert('Username exists');
+      
+      users.push({
+        username: u, 
+        password: p, 
+        email: eMail, 
+        phone: ph,
+        countryCode: countryCode,
+        address: ''
+      });
+      
+      localStorage.setItem('users', JSON.stringify(users));
+      alert('Registered'); 
+      toggleAuth('login');
+    }
+
+    function login(e) {
+      e.preventDefault();
+      const u = document.getElementById('loginUsername').value,
+            p = document.getElementById('loginPassword').value,
+            ph = document.getElementById('loginPhone').value;
+      
+      if (!validatePhoneNumber(ph)) {
+        return showPhoneError('loginPhone');
+      }
+      hidePhoneError('loginPhone');
+      
+      const users = JSON.parse(localStorage.getItem('users'));
+      const user = users.find(u2 => u2.username === u && u2.password === p && u2.phone === ph);
+      if (!user) return alert('Invalid credentials');
+      
+      sessionStorage.setItem('loggedInUser', JSON.stringify(user));
+      document.getElementById('authContainer').classList.add('hidden');
+      document.getElementById('homePage').classList.remove('hidden');
+      displayBooks(); 
+      displayOrders();
+    }
+
+    function logout() { 
+      sessionStorage.clear();
+      cartClear();
+      document.getElementById('homePage').classList.add('hidden');
+      document.getElementById('authContainer').classList.remove('hidden'); 
+    }
+
+    function displayBooks() {
+      const books = JSON.parse(localStorage.getItem('books')),
+            fa = document.getElementById('filterAuthor').value.toLowerCase(),
+            fg = document.getElementById('filterGenre').value,
+            tb = document.getElementById('booksTable');
+      tb.innerHTML = '';
+      
+      books.filter(b => b.author.toLowerCase().includes(fa) && (!fg || b.genre === fg)).forEach(b => {
+        const maxQty = Math.min(b.stock, 10); // Max 10 or available stock
+        let quantityOptions = '';
+        for (let i = 1; i <= maxQty; i++) {
+          quantityOptions += `<option value="${i}">${i}</option>`;
+        }
+        
+        tb.innerHTML += `
+        <tr>
+          <td>${b.title}</td>
+          <td>${b.author}</td>
+          <td>${b.genre}</td>
+          <td>$${b.price}</td>
+          <td>${b.stock}</td>
+          <td>
+            <div class="add-to-cart-container">
+              <select id="qty-${b.id}" class="quantity-input" ${b.stock <= 0 ? 'disabled' : ''}>
+                ${quantityOptions}
+              </select>
+              <button onclick="addToCart('${b.id}')" ${b.stock <= 0 ? 'disabled' : ''}>
+                ${b.stock <= 0 ? 'Out of Stock' : 'Add'}
+              </button>
+            </div>
+          </td>
+        </tr>`;
+      });
+    }
+
+    function addToCart(bookId) {
+      const books = JSON.parse(localStorage.getItem('books'));
+      const book = books.find(b => b.id === bookId);
+      const quantity = parseInt(document.getElementById(`qty-${bookId}`).value);
+      
+      if (book.stock <= 0) {
+        alert('This book is out of stock');
+        return;
+      }
+      
+      if (quantity > book.stock) {
+        alert('Cannot add more than available stock');
+        return;
+      }
+      
+      let cart = JSON.parse(sessionStorage.getItem('cart'));
+      const entry = cart.find(c => c.bookId === bookId);
+      
+      if (entry) {
+        if ((entry.qty + quantity) > book.stock) {
+          alert('Total quantity would exceed available stock');
+          return;
+        }
+        entry.qty += quantity;
+      } else {
+        cart.push({bookId, qty: quantity});
+      }
+      
+      sessionStorage.setItem('cart', JSON.stringify(cart));
+      alert(`${quantity} ${quantity > 1 ? 'copies' : 'copy'} added to cart`);
+    }
+
+    function displayOrders() { 
+      const ords = JSON.parse(localStorage.getItem('orders')),
+            bs = JSON.parse(localStorage.getItem('books')),
+            u = JSON.parse(sessionStorage.getItem('loggedInUser')),
+            tb = document.getElementById('ordersTable');
+      tb.innerHTML = '';
+      
+      ords.filter(o => o.userId === u.username)
+          .sort((a, b) => new Date(b.date) - new Date(a.date))
+          .forEach(o => {
+            const b = bs.find(x => x.id === o.bookId);
+            tb.innerHTML += `<tr>
+              <td>${o.id}</td>
+              <td>${b?.title || '?'}</td>
+              <td>${o.quantity}</td>
+              <td>$${o.quantity * o.price}</td>
+              <td>${new Date(o.date).toLocaleDateString()}</td>
+              <td class="status status-${o.status.toLowerCase()}">${o.status}</td>
+            </tr>`;
+          }); 
+    }
+
+    function showProfilePage() { 
+      const u = JSON.parse(sessionStorage.getItem('loggedInUser'));
+      document.getElementById('homePage').classList.add('hidden');
+      document.getElementById('profilePage').classList.remove('hidden');
+      document.getElementById('profileUsername').value = u.username;
+      document.getElementById('profileEmail').value = u.email;
+      document.getElementById('profilePhone').value = u.phone;
+      document.getElementById('profileCountryCode').value = u.countryCode || '+1';
+      document.getElementById('profileAddress').value = u.address || '';
+    }
+    
+    function backToHome() { 
+      document.getElementById('profilePage').classList.add('hidden'); 
+      document.getElementById('cartPage').classList.add('hidden'); 
+      document.getElementById('homePage').classList.remove('hidden'); 
+    }
+    
+    function updateProfile(e) { 
+      e.preventDefault(); 
+      const ph = document.getElementById('profilePhone').value;
+      const countryCode = document.getElementById('profileCountryCode').value;
+      
+      if (!validatePhoneNumber(ph)) {
+        return showPhoneError('profilePhone');
+      }
+      hidePhoneError('profilePhone');
+      
+      let users = JSON.parse(localStorage.getItem('users')),
+          u = JSON.parse(sessionStorage.getItem('loggedInUser')),
+          i = users.findIndex(x => x.username === u.username);
+      
+      users[i].email = document.getElementById('profileEmail').value;
+      users[i].phone = ph;
+      users[i].countryCode = countryCode;
+      users[i].address = document.getElementById('profileAddress').value;
+      
+      localStorage.setItem('users', JSON.stringify(users));
+      sessionStorage.setItem('loggedInUser', JSON.stringify(users[i]));
+      alert('Profile updated'); 
+    }
+
+    function showCartPage() { 
+      document.getElementById('homePage').classList.add('hidden'); 
+      document.getElementById('cartPage').classList.remove('hidden'); 
+      displayCart(); 
+    }
+    
+    function displayCart() { 
+      const cart = JSON.parse(sessionStorage.getItem('cart')),
+            bs = JSON.parse(localStorage.getItem('books')),
+            tb = document.getElementById('cartTable');
+      tb.innerHTML = '';
+      let total = 0;
+      
+      cart.forEach(c => {
+        const b = bs.find(x => x.id === c.bookId);
+        if (b) {
+          const itemTotal = c.qty * b.price;
+          total += itemTotal;
+          tb.innerHTML += `<tr>
+            <td>${b.title}</td>
+            <td>${c.qty}</td>
+            <td>$${itemTotal.toFixed(2)}</td>
+            <td><button onclick="removeFromCart('${c.bookId}')">X</button></td>
+          </tr>`;
+        }
+      });
+      
+      document.getElementById('cartTotal').textContent = `Total: $${total.toFixed(2)}`;
+    }
+    
+    function removeFromCart(bookId) { 
+      let cart = JSON.parse(sessionStorage.getItem('cart'));
+      cart = cart.filter(c => c.bookId !== bookId);
+      sessionStorage.setItem('cart', JSON.stringify(cart));
+      displayCart(); 
+    }
+    
+    function checkout() { 
+      const cart = JSON.parse(sessionStorage.getItem('cart'));
+      if (cart.length === 0) {
+        alert('Your cart is empty');
+        return;
+      }
+      
+      const books = JSON.parse(localStorage.getItem('books')),
+            orders = JSON.parse(localStorage.getItem('orders')),
+            u = JSON.parse(sessionStorage.getItem('loggedInUser'));
+      
+      cart.forEach(c => { 
+        const b = books.find(x => x.id === c.bookId); 
+        b.stock -= c.qty; 
+        orders.push({
+          id: Date.now().toString(),
+          bookId: c.bookId,
+          quantity: c.qty,
+          price: b.price,
+          userId: u.username,
+          date: new Date().toISOString(),
+          status: 'Pending'
+        }); 
+      }); 
+      
+      localStorage.setItem('books', JSON.stringify(books)); 
+      localStorage.setItem('orders', JSON.stringify(orders)); 
+      cartClear(); 
+      alert('Order placed successfully'); 
+      backToHome(); 
+      displayBooks(); 
+      displayOrders(); 
+    }
+    
+    function cartClear() { 
+      sessionStorage.setItem('cart', JSON.stringify([])); 
+    }
+
+    // Initialize phone number validation
+    document.getElementById('loginPhone').addEventListener('input', function() {
+      if (!validatePhoneNumber(this.value)) {
+        showPhoneError('loginPhone');
+      } else {
+        hidePhoneError('loginPhone');
+      }
+    });
+    
+    document.getElementById('registerPhone').addEventListener('input', function() {
+      if (!validatePhoneNumber(this.value)) {
+        showPhoneError('registerPhone');
+      } else {
+        hidePhoneError('registerPhone');
+      }
+    });
+    
+    document.getElementById('profilePhone').addEventListener('input', function() {
+      if (!validatePhoneNumber(this.value)) {
+        showPhoneError('profilePhone');
+      } else {
+        hidePhoneError('profilePhone');
+      }
+    });
+
+    initializeData(); 
+    toggleAuth('login');
+  </script>
+</body>
+</html>
